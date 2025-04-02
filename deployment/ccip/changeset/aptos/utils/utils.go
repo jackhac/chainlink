@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/smartcontractkit/chainlink/deployment"
@@ -11,7 +12,7 @@ import (
 // TODO: This function will be used directly, but it need to be a parameter of AptosChain
 // to be consistent to Evm/Solana pattern
 func ConfirmTx(chain deployment.AptosChain, txHash string) error {
-	userTx, err := chain.Client.WaitForTransaction(txHash)
+	userTx, err := chain.Client.WaitForTransaction(txHash, aptos.PollPeriod(10*time.Millisecond), aptos.PollTimeout(120*time.Second))
 	if err != nil {
 		return err
 	}

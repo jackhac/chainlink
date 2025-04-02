@@ -37,7 +37,7 @@ func (cs CsDeployAptosChainImp) VerifyPreconditions(env deployment.Environment, 
 		if !ok {
 			errs = append(errs, fmt.Errorf("chain %d not found in state", chainSel))
 		}
-		if chainState.MCMSAddress == (aptos.AccountAddress{}) {
+		if chainState.MCMSAddress == aptos.AccountZero {
 			mcmsConfig := config.MCMSConfigPerChain[chainSel]
 			if err := mcmsConfig.Validate(); err != nil {
 				errs = append(errs, fmt.Errorf("invalid mcms configs for chain %d: %w", chainSel, err))
@@ -101,7 +101,7 @@ func (cs CsDeployAptosChainImp) Apply(env deployment.Environment, config config.
 
 func runMCMSDeployOperations(ops *operation.MCMSDeploymentOperations) error {
 	// Check if MCMS package is already deployed
-	if (ops.OnChainState.MCMSAddress != aptos.AccountAddress{}) {
+	if ops.OnChainState.MCMSAddress != aptos.AccountZero {
 		ops.Env.Logger.Infow("MCMS Package already deployed", "addr", ops.OnChainState.MCMSAddress.String())
 		return nil
 	}

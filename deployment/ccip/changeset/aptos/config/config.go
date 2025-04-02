@@ -55,7 +55,7 @@ type FeeQuoterParams struct {
 }
 
 func (f FeeQuoterParams) Validate() error {
-	if (f.LinkToken == aptos.AccountAddress{}) {
+	if f.LinkToken == aptos.AccountZero {
 		return fmt.Errorf("LinkToken is required")
 	}
 	if f.TokenPriceStalenessThreshold == 0 {
@@ -101,7 +101,7 @@ func (o OnRampParams) Validate() error {
 	if err := deployment.IsValidChainSelector(o.ChainSelector); err != nil {
 		return fmt.Errorf("invalid chain selector: %d - %w", o.ChainSelector, err)
 	}
-	if (o.AllowlistAdmin == aptos.AccountAddress{}) {
+	if o.AllowlistAdmin == aptos.AccountZero {
 		return fmt.Errorf("AllowlistAdmin is required")
 	}
 	if len(o.DestChainSelectors) != len(o.DestChainEnabled) {

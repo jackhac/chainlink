@@ -35,10 +35,10 @@ func (op *MCMSDeploymentOperations) DeployMCMS() (aptos.AccountAddress, mcmsbind
 	mcmsSeed := mcmsbind.DefaultSeed + time.Now().String()
 	addressMCMS, mcmsDeployTx, contractMCMS, err := mcmsbind.DeployToResourceAccount(op.AptosChain.DeployerSigner, op.AptosChain.Client, mcmsSeed)
 	if err != nil {
-		return aptos.AccountAddress{}, mcmsbind.MCMSContract{}, fmt.Errorf("failed to deploy MCMS contract: %v", err)
+		return aptos.AccountZero, mcmsbind.MCMSContract{}, fmt.Errorf("failed to deploy MCMS contract: %v", err)
 	}
 	if err := utils.ConfirmTx(op.AptosChain, mcmsDeployTx.Hash); err != nil {
-		return aptos.AccountAddress{}, mcmsbind.MCMSContract{}, fmt.Errorf("failed to confirm MCMS deployment transaction: %v", err)
+		return aptos.AccountZero, mcmsbind.MCMSContract{}, fmt.Errorf("failed to confirm MCMS deployment transaction: %v", err)
 	}
 
 	typeAndVersion := deployment.NewTypeAndVersion(changeset.AptosMCMSType, deployment.Version1_0_0)

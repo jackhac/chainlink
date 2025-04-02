@@ -89,7 +89,7 @@ func (op *CCIPDeploymentOperations) GenerateCleanupStagingProposal() error {
 // GenerateDeployCCIPProposal generates deployment MCMS operations for the CCIP package
 func (op *CCIPDeploymentOperations) GenerateDeployCCIPProposal() (*aptos.AccountAddress, error) {
 	// Validate there's no package deployed
-	if (op.OnChainState.CCIPAddress != aptos.AccountAddress{}) {
+	if op.OnChainState.CCIPAddress != aptos.AccountZero {
 		op.Env.Logger.Infow("CCIP Package already deployed", "addr", op.OnChainState.CCIPAddress.String())
 		return &op.OnChainState.CCIPAddress, nil
 	}
