@@ -298,7 +298,7 @@ func ExecuteMCMSProposalV2(t *testing.T, env deployment.Environment, proposal *m
 		if family == chainsel.FamilyAptos {
 			chain := env.AptosChains[uint64(op.ChainSelector)]
 			tx := result.RawData.(*aptosapi.PendingTransaction)
-			t.Logf("[ExecuteMCMSProposalV2] SetRoot Aptos tx hash: %s", tx.Hash)
+			t.Logf("[ExecuteMCMSProposalV2] Operation %d Aptos tx hash: %s", i, tx.Hash)
 			err = aptosutil.ConfirmTx(chain, tx.Hash)
 			if err != nil {
 				return fmt.Errorf("[ExecuteMCMSProposalV2] Confirm failed: %w", err)

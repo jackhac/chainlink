@@ -17,8 +17,6 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
-const MCMSPackageName string = "mcms" // TODO: this should be a constant imported from bindings
-
 const AcceptOwnershipProposalDescription = "Accept ownership of the contract to self"
 
 type MCMSDeploymentOperations struct {

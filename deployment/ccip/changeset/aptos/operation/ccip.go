@@ -102,7 +102,7 @@ func (op *CCIPDeploymentOperations) GenerateDeployCCIPProposal() (*aptos.Account
 	}
 
 	// Save the address of the CCIP object
-	typeAndVersion := deployment.NewTypeAndVersion(changeset.AptosCCIPType, deployment.Version1_0_0)
+	typeAndVersion := deployment.NewTypeAndVersion(changeset.AptosCCIPType, deployment.Version1_6_0)
 	op.Ab.Save(op.AptosChain.Selector, ccipObjectAddress.String(), typeAndVersion)
 	op.OnChainState.CCIPAddress = ccipObjectAddress
 
