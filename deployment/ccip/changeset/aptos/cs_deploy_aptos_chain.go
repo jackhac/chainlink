@@ -13,34 +13,35 @@ import (
 	"github.com/smartcontractkit/mcms"
 )
 
-// CsDeployAptosChain deploys CCIP Package for Aptos chains
-var CsDeployAptosChain deployment.ChangeSetV2[config.DeployAptosChainConfig] = CsDeployAptosChainImp{}
+var _ deployment.ChangeSetV2[config.DeployAptosChainConfig] = DeployAptosChain{}
 
-type CsDeployAptosChainImp struct{}
+// DeployAptosChain deploys Aptos chain packages and modules
+type DeployAptosChain struct{}
 
-func (cs CsDeployAptosChainImp) VerifyPreconditions(env deployment.Environment, config config.DeployAptosChainConfig) error {
+func (cs DeployAptosChain) VerifyPreconditions(env deployment.Environment, config config.DeployAptosChainConfig) error {
 	// Validate env and prerequisite contracts
 	state, err := changeset.LoadOnchainStateAptos(env)
 	if err != nil {
-		return fmt.Errorf("failed to load existing onchain state: %w", err)
+		return fmt.Errorf("failed to load existing Aptos onchain state: %w", err)
 	}
 	var errs []error
 	for chainSel := range config.ContractParamsPerChain {
 		if err := config.Validate(); err != nil {
-			errs = append(errs, fmt.Errorf("invalid config for chain %d: %w", chainSel, err))
+			errs = append(errs, fmt.Errorf("invalid config for Aptos chain %d: %w", chainSel, err))
 			continue
 		}
 		if _, ok := env.AptosChains[chainSel]; !ok {
-			errs = append(errs, fmt.Errorf("chain %d not found in env", chainSel))
+			errs = append(errs, fmt.Errorf("aptos chain %d not found in env", chainSel))
 		}
 		chainState, ok := state[chainSel]
 		if !ok {
-			errs = append(errs, fmt.Errorf("chain %d not found in state", chainSel))
+			errs = append(errs, fmt.Errorf("aptos chain %d not found in state", chainSel))
+			continue
 		}
 		if chainState.MCMSAddress == aptos.AccountZero {
 			mcmsConfig := config.MCMSConfigPerChain[chainSel]
 			if err := mcmsConfig.Validate(); err != nil {
-				errs = append(errs, fmt.Errorf("invalid mcms configs for chain %d: %w", chainSel, err))
+				errs = append(errs, fmt.Errorf("invalid mcms configs for Aptos chain %d: %w", chainSel, err))
 			}
 		}
 	}
@@ -48,10 +49,10 @@ func (cs CsDeployAptosChainImp) VerifyPreconditions(env deployment.Environment, 
 	return errors.Join(errs...)
 }
 
-func (cs CsDeployAptosChainImp) Apply(env deployment.Environment, config config.DeployAptosChainConfig) (deployment.ChangesetOutput, error) {
+func (cs DeployAptosChain) Apply(env deployment.Environment, config config.DeployAptosChainConfig) (deployment.ChangesetOutput, error) {
 	state, err := changeset.LoadOnchainStateAptos(env)
 	if err != nil {
-		return deployment.ChangesetOutput{}, fmt.Errorf("failed to load onchain state: %w", err)
+		return deployment.ChangesetOutput{}, fmt.Errorf("failed to load Aptos onchain state: %w", err)
 	}
 
 	ab := deployment.NewMemoryAddressBook()
@@ -74,7 +75,7 @@ func (cs CsDeployAptosChainImp) Apply(env deployment.Environment, config config.
 		}
 		err := runMCMSDeployOperations(&opsMCMS)
 		if err != nil {
-			return deployment.ChangesetOutput{}, fmt.Errorf("failed to deploy MCMS contracts for chain %d: %w", chainSel, err)
+			return deployment.ChangesetOutput{}, fmt.Errorf("failed to deploy MCMS for Aptos chain %d: %w", chainSel, err)
 		}
 
 		// CCIP Deploy operations
@@ -89,7 +90,7 @@ func (cs CsDeployAptosChainImp) Apply(env deployment.Environment, config config.
 		}
 		err = runCCIPDeployOperations(&ccipOps)
 		if err != nil {
-			return deployment.ChangesetOutput{}, fmt.Errorf("failed to deploy CCIP contracts for chain %d: %w", chainSel, err)
+			return deployment.ChangesetOutput{}, fmt.Errorf("failed to deploy CCIP for Aptos chain %d: %w", chainSel, err)
 		}
 	}
 

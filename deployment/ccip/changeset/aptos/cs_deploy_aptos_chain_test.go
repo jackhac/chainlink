@@ -18,7 +18,7 @@ import (
 	ccipbind "github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
 )
 
-func TestCsDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
+func TestDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 	tests := []struct {
 		name      string
 		env       deployment.Environment
@@ -176,7 +176,7 @@ func TestCsDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cs := CsDeployAptosChainImp{}
+			cs := DeployAptosChain{}
 			err := cs.VerifyPreconditions(tt.env, tt.config)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -189,7 +189,7 @@ func TestCsDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 	}
 }
 
-func TestCsDeployAptosChain_Apply(t *testing.T) {
+func TestDeployAptosChain_Apply(t *testing.T) {
 	t.Parallel()
 	lggr := logger.TestLogger(t)
 
@@ -215,7 +215,7 @@ func TestCsDeployAptosChain_Apply(t *testing.T) {
 		},
 	}
 	env, err := commonchangeset.ApplyChangesetsV2(t, env, []commonchangeset.ConfiguredChangeSet{
-		commonchangeset.Configure(CsDeployAptosChain, ccipConfig),
+		commonchangeset.Configure(DeployAptosChain{}, ccipConfig),
 	})
 	require.NoError(t, err)
 
