@@ -14,7 +14,6 @@ import (
 // TODO: This is to test the implementation of Aptos chains in memory environment
 // To be deleted after changesets tests are added
 func TestAptosMemoryEnv(t *testing.T) {
-	t.Parallel()
 	lggr := logger.TestLogger(t)
 	env := memory.NewMemoryEnvironment(t, lggr, zapcore.InfoLevel, memory.MemoryEnvironmentConfig{
 		AptosChains: 1,
@@ -27,7 +26,6 @@ func TestAptosMemoryEnv(t *testing.T) {
 // TODO: This is to test the implementation of Aptos chains in memory environment
 // To be deleted after changesets tests are added
 func TestAptosHelperMemoryEnv(t *testing.T) {
-	t.Parallel()
 	depEvn, testEnv := testhelpers.NewMemoryEnvironment(
 		t,
 		testhelpers.WithAptosChains(1),
