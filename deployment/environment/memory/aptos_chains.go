@@ -3,7 +3,6 @@ package memory
 import (
 	"crypto/ed25519"
 	"encoding/hex"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -60,9 +59,11 @@ func GenerateChainsAptos(t *testing.T, numChains int) map[uint64]deployment.Apto
 	chains := make(map[uint64]deployment.AptosChain)
 	for i := 0; i < numChains; i++ {
 		selector := testAptosChainSelectors[i]
+		chainID, err := chainsel.GetChainIDFromSelector(selector)
+		require.NoError(t, err)
 		account := createAptosAccount(t, true)
 
-		nodeClient := aptosChain(t, selector, account.Address)
+		nodeClient := aptosChain(t, chainID, account.Address)
 		chains[selector] = deployment.AptosChain{
 			Selector:       selector,
 			Client:         nodeClient,
@@ -73,7 +74,7 @@ func GenerateChainsAptos(t *testing.T, numChains int) map[uint64]deployment.Apto
 	return chains
 }
 
-func aptosChain(t *testing.T, chainSelector uint64, adminAddress aptos.AccountAddress) *aptos.NodeClient {
+func aptosChain(t *testing.T, chainID string, adminAddress aptos.AccountAddress) *aptos.NodeClient {
 	t.Helper()
 
 	// initialize the docker network used by CTF
@@ -88,10 +89,9 @@ func aptosChain(t *testing.T, chainSelector uint64, adminAddress aptos.AccountAd
 		// port := freeport.GetOne(t)
 
 		bcInput := &blockchain.Input{
-			Image: "", // filled out by defaultAptos function
-			Type:  "aptos",
-			// TODO(aptos): this should be chain id not chain selector?
-			ChainID:   strconv.FormatUint(chainSelector, 10),
+			Image:     "", // filled out by defaultAptos function
+			Type:      "aptos",
+			ChainID:   chainID,
 			PublicKey: adminAddress.String(),
 			// Port:      strconv.Itoa(port), // Defaults to 8080
 		}
@@ -127,7 +127,7 @@ func aptosChain(t *testing.T, chainSelector uint64, adminAddress aptos.AccountAd
 	time.Sleep(15 * time.Second) // we have slot errors that force retries if the chain is not given enough time to boot
 
 	// incase we didn't use the default account above
-	_, err = framework.ExecContainer(containerName, []string{"aptos", "account", "fund-with-faucet", "--account", adminAddress.String()})
+	_, err = framework.ExecContainer(containerName, []string{"aptos", "account", "fund-with-faucet", "--account", adminAddress.String(), "--amount", "100000000000"})
 	require.NoError(t, err)
 
 	return client
