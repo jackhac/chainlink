@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/testhelpers"
 	"github.com/smartcontractkit/chainlink/deployment/environment/memory"
 	"github.com/smartcontractkit/chainlink/v2/core/logger"
@@ -21,6 +22,9 @@ func TestAptosMemoryEnv(t *testing.T) {
 	aptosChainSelectors := env.AllChainSelectorsAptos()
 	require.Len(t, aptosChainSelectors, 1)
 	require.NotEqual(t, 0, env.AptosChains[0].Selector)
+	// Remove containers for the next test
+	err := framework.RemoveTestContainers()
+	require.NoError(t, err)
 }
 
 // TODO: This is to test the implementation of Aptos chains in memory environment
@@ -35,4 +39,7 @@ func TestAptosHelperMemoryEnv(t *testing.T) {
 	require.Len(t, aptosChainSelectors, 1)
 	aptosChainSelectors2 := testEnv.DeployedEnvironment().Env.AllChainSelectorsAptos()
 	require.Len(t, aptosChainSelectors2, 1)
+	// Remove containers for the next test
+	err := framework.RemoveTestContainers()
+	require.NoError(t, err)
 }

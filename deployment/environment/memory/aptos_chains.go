@@ -85,15 +85,12 @@ func aptosChain(t *testing.T, chainID string, adminAddress aptos.AccountAddress)
 	var url string
 	var containerName string
 	for i := 0; i < maxRetries; i++ {
-		// TODO(aptos): update CTF to be able to use the selected port
-		// port := freeport.GetOne(t)
 
 		bcInput := &blockchain.Input{
 			Image:     "", // filled out by defaultAptos function
 			Type:      "aptos",
 			ChainID:   chainID,
 			PublicKey: adminAddress.String(),
-			// Port:      strconv.Itoa(port), // Defaults to 8080
 		}
 		output, err := blockchain.NewBlockchainNetwork(bcInput)
 		if err != nil {
@@ -105,7 +102,7 @@ func aptosChain(t *testing.T, chainID string, adminAddress aptos.AccountAddress)
 		require.NoError(t, err)
 		containerName = output.ContainerName
 		testcontainers.CleanupContainer(t, output.Container)
-		url = output.Nodes[0].HostHTTPUrl + "/v1"
+		url = output.Nodes[0].ExternalHTTPUrl + "/v1"
 		break
 	}
 
