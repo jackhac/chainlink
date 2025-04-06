@@ -1198,3 +1198,21 @@ func ValidateChain(env deployment.Environment, state CCIPOnChainState, chainSel 
 	}
 	return nil
 }
+
+func ValidateChainSol(env deployment.Environment, state CCIPOnChainState, chainSel uint64) error {
+	err := deployment.IsValidChainSelector(chainSel)
+	if err != nil {
+		return fmt.Errorf("is not valid chain selector %d: %w", chainSel, err)
+	}
+	chain, ok := env.SolChains[chainSel]
+	if !ok {
+		return fmt.Errorf("chain with selector %d does not exist in environment", chainSel)
+	}
+	_, ok = state.SolChains[chainSel]
+	if !ok {
+		return fmt.Errorf("%s does not exist in state", chain)
+	}
+
+	// TODO: validate solana MCM chain state
+	return nil
+}

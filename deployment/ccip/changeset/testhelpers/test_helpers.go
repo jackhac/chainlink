@@ -62,7 +62,6 @@ import (
 	solTestTokenPool "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/test_token_pool"
 
 	solconfig "github.com/smartcontractkit/chainlink-ccip/chains/solana/contracts/tests/config"
-	soltestutils "github.com/smartcontractkit/chainlink-ccip/chains/solana/contracts/tests/testutils"
 	solccip "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/ccip"
 	solcommon "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 	solstate "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/state"
@@ -391,7 +390,7 @@ func TestSendRequest(
 	}
 	baseOpts = append(baseOpts, opts...)
 
-	msgSentEvent, err := SendRequest(t, e, state, baseOpts...)
+	msgSentEvent, err := SendRequest(e, state, baseOpts...)
 	require.NoError(t, err)
 	return msgSentEvent
 }
@@ -453,7 +452,6 @@ func WithDestChain(destChain uint64) SendReqOpts {
 
 // SendRequest similar to TestSendRequest but returns an error.
 func SendRequest(
-	t *testing.T,
 	e deployment.Environment,
 	state changeset.CCIPOnChainState,
 	opts ...SendReqOpts,
@@ -463,21 +461,21 @@ func SendRequest(
 		opt(cfg)
 	}
 	family, err := chainsel.GetSelectorFamily(cfg.SourceChain)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	switch family {
 	case chainsel.FamilyEVM:
-		return SendRequestEVM(t, e, state, cfg)
+		return SendRequestEVM(e, state, cfg)
 	case chainsel.FamilySolana:
-		return SendRequestSol(t, e, state, cfg)
+		return SendRequestSol(e, state, cfg)
 	default:
-		t.Errorf("send request: unsupported chain family: %v", family)
-		return nil, nil
+		return nil, fmt.Errorf("send request: unsupported chain family: %v", family)
 	}
 }
 
 func SendRequestEVM(
-	t *testing.T,
 	e deployment.Environment,
 	state changeset.CCIPOnChainState,
 	cfg *CCIPSendReqConfig,
@@ -486,8 +484,10 @@ func SendRequestEVM(
 	if cfg.Sender == nil {
 		cfg.Sender = e.Chains[cfg.SourceChain].DeployerKey
 	}
-	t.Logf("Sending CCIP request from chain selector %d to chain selector %d from sender %s",
+
+	e.Logger.Infof("Sending CCIP request from chain selector %d to chain selector %d from sender %s\n",
 		cfg.SourceChain, cfg.DestChain, cfg.Sender.From.String())
+
 	tx, blockNum, err := CCIPSendRequest(e, state, cfg)
 	if err != nil {
 		return nil, err
@@ -502,9 +502,12 @@ func SendRequestEVM(
 		return nil, err
 	}
 
-	require.True(t, it.Next())
-	t.Logf("CCIP message (id %x) sent from chain selector %d to chain selector %d tx %s seqNum %d nonce %d sender %s testRouterEnabled %t",
-		it.Event.Message.Header.MessageId[:],
+	if !it.Next() {
+		return nil, fmt.Errorf("no CCIP message sent event found")
+	}
+
+	e.Logger.Infof("CCIP message (id %s) sent from chain selector %d to chain selector %d tx %s seqNum %d nonce %d sender %s testRouterEnabled %t\n",
+		common.Bytes2Hex(it.Event.Message.Header.MessageId[:]),
 		cfg.SourceChain,
 		cfg.DestChain,
 		tx.Hash().String(),
@@ -517,7 +520,6 @@ func SendRequestEVM(
 }
 
 func SendRequestSol(
-	t *testing.T,
 	e deployment.Environment,
 	state changeset.CCIPOnChainState,
 	cfg *CCIPSendReqConfig,
@@ -535,41 +537,65 @@ func SendRequestSol(
 		message.FeeToken = s.WSOL
 	}
 
-	t.Logf("Sending CCIP request from chain selector %d to chain selector %d from sender %s",
+	e.Logger.Infof("Sending CCIP request from chain selector %d to chain selector %d from sender %s\n",
 		cfg.SourceChain, cfg.DestChain, sender.String())
 
 	client := e.SolChains[cfg.SourceChain].Client
-	ctx := t.Context()
+	ctx := e.GetContext()
 
 	destinationChainSelector := cfg.DestChain
 
 	destinationChainStatePDA, err := solstate.FindDestChainStatePDA(destinationChainSelector, s.Router)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	noncePDA, err := solstate.FindNoncePDA(cfg.DestChain, sender.PublicKey(), s.Router)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	feeToken := message.FeeToken
 
 	linkFqBillingConfigPDA, _, err := solstate.FindFqBillingTokenConfigPDA(s.LinkToken, s.FeeQuoter)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
+
 	feeTokenFqBillingConfigPDA, _, err := solstate.FindFqBillingTokenConfigPDA(feeToken, s.FeeQuoter)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	billingSignerPDA, _, err := solstate.FindFeeBillingSignerPDA(s.Router)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	feeTokenUserATA, _, err := soltokens.FindAssociatedTokenAddress(solana.TokenProgramID, feeToken, sender.PublicKey())
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
+
 	feeTokenReceiverATA, _, err := soltokens.FindAssociatedTokenAddress(solana.TokenProgramID, feeToken, billingSignerPDA)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
+
 	fqDestChainPDA, _, err := solstate.FindFqDestChainPDA(cfg.DestChain, s.FeeQuoter)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	rmnRemoteCursesPDA, _, err := solstate.FindRMNRemoteCursesPDA(s.RMNRemote)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
+
 	externalTokenPoolsSignerPDA, _, err := solstate.FindExternalTokenPoolsSignerPDA(s.Router)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	base := ccip_router.NewCcipSendInstruction(
 		destinationChainSelector,
@@ -610,71 +636,131 @@ func SendRequestSol(
 	for _, tokenAmount := range message.TokenAmounts {
 		token := tokenAmount.Token
 		tokenPool, err := soltokens.NewTokenPool(solana.Token2022ProgramID, s.BurnMintTokenPool, token)
-		require.NoError(t, err)
+		if err != nil {
+			return nil, err
+		}
 
 		// Set the token pool's lookup table address
 		var tokenAdminRegistry solCommon.TokenAdminRegistry
 		err = solcommon.GetAccountDataBorshInto(ctx, client, tokenPool.AdminRegistryPDA, solconfig.DefaultCommitment, &tokenAdminRegistry)
-		require.NoError(t, err)
+		if err != nil {
+			return nil, err
+		}
+
 		tokenPool.PoolLookupTable = tokenAdminRegistry.LookupTable
 
 		// invalid config account, maybe this billing stuff isn't right
 
 		chainPDA, _, err := soltokens.TokenPoolChainConfigPDA(cfg.DestChain, token, s.BurnMintTokenPool)
-		require.NoError(t, err)
+		if err != nil {
+			return nil, err
+		}
+
 		tokenPool.Chain[cfg.DestChain] = chainPDA
 
 		billingPDA, _, err := solstate.FindFqPerChainPerTokenConfigPDA(cfg.DestChain, token, s.FeeQuoter)
-		require.NoError(t, err)
+		if err != nil {
+			return nil, err
+		}
+
 		tokenPool.Billing[cfg.DestChain] = billingPDA
 
 		userTokenAccount, _, err := soltokens.FindAssociatedTokenAddress(solana.Token2022ProgramID, token, sender.PublicKey())
-		require.NoError(t, err)
+		if err != nil {
+			return nil, err
+		}
 
 		tokenMetas, tokenAddressTables, err := soltokens.ParseTokenLookupTableWithChain(ctx, client, tokenPool, userTokenAccount, cfg.DestChain)
-		require.NoError(t, err)
+		if err != nil {
+			return nil, err
+		}
+
 		tokenIndexes = append(tokenIndexes, byte(len(base.AccountMetaSlice)-requiredAccounts))
 		base.AccountMetaSlice = append(base.AccountMetaSlice, tokenMetas...)
 		maps.Copy(addressTables, tokenAddressTables)
 	}
+
 	base.SetTokenIndexes(tokenIndexes)
 
 	ix, err := base.ValidateAndBuild()
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	// for some reason onchain doesn't see extraAccounts
 
 	ixs := []solana.Instruction{ix}
-	result := soltestutils.SendAndConfirmWithLookupTables(ctx, t, client, ixs, *sender, solconfig.DefaultCommitment, addressTables, solcommon.AddComputeUnitLimit(300_000))
-	require.NotNil(t, result)
+	result, err := solcommon.SendAndConfirmWithLookupTables(ctx, client, ixs, *sender, solconfig.DefaultCommitment, addressTables, solcommon.AddComputeUnitLimit(300_000))
+	if err != nil {
+		return nil, err
+	}
 
 	// check CCIP event
 	ccipMessageSentEvent := solccip.EventCCIPMessageSent{}
 	printEvents := true
-	require.NoError(t, solcommon.ParseEvent(result.Meta.LogMessages, "CCIPMessageSent", &ccipMessageSentEvent, printEvents))
-	require.Equal(t, len(message.TokenAmounts), len(ccipMessageSentEvent.Message.TokenAmounts))
+	err = solcommon.ParseEvent(result.Meta.LogMessages, "CCIPMessageSent", &ccipMessageSentEvent, printEvents)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(message.TokenAmounts) != len(ccipMessageSentEvent.Message.TokenAmounts) {
+		return nil, fmt.Errorf("token amounts mismatch")
+	}
 
 	// TODO: fee bumping?
 
-	// ---
+	transactionID := "N/A"
+	if tx, err := result.Transaction.GetTransaction(); err != nil {
+		e.Logger.Warnf("could not obtain transaction details (err = %w)", err)
+	} else if len(tx.Signatures) <= 0 {
+		e.Logger.Warnf("transaction has no signatures:\n%v", tx)
+	} else {
+		transactionID = tx.Signatures[0].String()
+	}
 
-	// t.Logf("CCIP message (id %x) sent from chain selector %d to chain selector %d tx %s seqNum %d nonce %d sender %s testRouterEnabled %t",
-	// 	it.Event.Message.Header.MessageId[:],
-	// 	cfg.SourceChain,
-	// 	cfg.DestChain,
-	// 	tx.Hash().String(),
-	// 	it.Event.SequenceNumber,
-	// 	it.Event.Message.Header.Nonce,
-	// 	it.Event.Message.Sender.String(),
-	// 	cfg.IsTestRouter,
-	// )
+	e.Logger.Infof("CCIP message (id %s) sent from chain selector %d to chain selector %d tx %s seqNum %d nonce %d sender %s testRouterEnabled %t\n",
+		common.Bytes2Hex(ccipMessageSentEvent.Message.Header.MessageId[:]),
+		cfg.SourceChain,
+		cfg.DestChain,
+		transactionID,
+		ccipMessageSentEvent.SequenceNumber,
+		ccipMessageSentEvent.Message.Header.Nonce,
+		ccipMessageSentEvent.Message.Sender.String(),
+		cfg.IsTestRouter,
+	)
 
 	return &onramp.OnRampCCIPMessageSent{
 		DestChainSelector: ccipMessageSentEvent.DestinationChainSelector,
 		SequenceNumber:    ccipMessageSentEvent.SequenceNumber,
-		Message:           onramp.InternalEVM2AnyRampMessage{}, // TODO:
-		Raw:               types.Log{},
+		Message: onramp.InternalEVM2AnyRampMessage{
+			Header: onramp.InternalRampMessageHeader{
+				SourceChainSelector: ccipMessageSentEvent.Message.Header.SourceChainSelector,
+				DestChainSelector:   ccipMessageSentEvent.Message.Header.SourceChainSelector,
+				MessageId:           ccipMessageSentEvent.Message.Header.MessageId,
+				SequenceNumber:      ccipMessageSentEvent.SequenceNumber,
+				Nonce:               ccipMessageSentEvent.Message.Header.Nonce,
+			},
+			FeeTokenAmount: ConvertSolanaCrossChainAmountToBigInt(ccipMessageSentEvent.Message.FeeTokenAmount),
+			FeeValueJuels:  ConvertSolanaCrossChainAmountToBigInt(ccipMessageSentEvent.Message.FeeValueJuels),
+			ExtraArgs:      ccipMessageSentEvent.Message.ExtraArgs,
+			Receiver:       ccipMessageSentEvent.Message.Receiver,
+			Data:           ccipMessageSentEvent.Message.Data,
+
+			// TODO: these fields are EVM specific - need to revisit for Solana
+			FeeToken:     common.Address{}, // ccipMessageSentEvent.Message.FeeToken
+			Sender:       common.Address{}, // ccipMessageSentEvent.Message.Sender
+			TokenAmounts: []onramp.InternalEVM2AnyTokenTransfer{},
+		},
+
+		// TODO: EVM specific - need to revisit for Solana
+		Raw: types.Log{},
 	}, nil
+}
+
+func ConvertSolanaCrossChainAmountToBigInt(amount ccip_router.CrossChainAmount) *big.Int {
+	bytes := amount.LeBytes[:]
+	slices.Reverse(bytes) // convert to big-endian
+	return big.NewInt(0).SetBytes(bytes)
 }
 
 // MakeEVMExtraArgsV2 creates the extra args for the EVM2Any message that is destined
@@ -1125,7 +1211,8 @@ func DeployTransferableTokenSolana(
 	addresses deployment.AddressBook,
 	evmTokenName string,
 ) (*burn_mint_erc677.BurnMintERC677,
-	*burn_mint_token_pool.BurnMintTokenPool, solana.PublicKey, error) {
+	*burn_mint_token_pool.BurnMintTokenPool, solana.PublicKey, error,
+) {
 	selectorFamily, err := chainsel.GetSelectorFamily(evmChainSel)
 	if err != nil {
 		return nil, nil, solana.PublicKey{}, err
@@ -1793,7 +1880,8 @@ type TokenBalanceAccumulator map[uint64][]ExpectedTokenBalance
 func (t TokenBalanceAccumulator) add(
 	destChain uint64,
 	receiver []byte,
-	expectedBalances []ExpectedBalance) {
+	expectedBalances []ExpectedBalance,
+) {
 	for _, expected := range expectedBalances {
 		token := expected.Token
 		balance := expected.Amount
