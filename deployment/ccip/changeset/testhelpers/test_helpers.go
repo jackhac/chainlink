@@ -503,7 +503,7 @@ func SendRequestEVM(
 	}
 
 	if !it.Next() {
-		return nil, fmt.Errorf("no CCIP message sent event found")
+		return nil, errors.New("no CCIP message sent event found")
 	}
 
 	e.Logger.Infof("CCIP message (id %s) sent from chain selector %d to chain selector %d tx %s seqNum %d nonce %d sender %s testRouterEnabled %t",
@@ -704,15 +704,15 @@ func SendRequestSol(
 	}
 
 	if len(message.TokenAmounts) != len(ccipMessageSentEvent.Message.TokenAmounts) {
-		return nil, fmt.Errorf("token amounts mismatch")
+		return nil, errors.New("token amounts mismatch")
 	}
 
 	// TODO: fee bumping?
 
 	transactionID := "N/A"
 	if tx, err := result.Transaction.GetTransaction(); err != nil {
-		e.Logger.Warnf("could not obtain transaction details (err = %w)", err)
-	} else if len(tx.Signatures) <= 0 {
+		e.Logger.Warnf("could not obtain transaction details (err = %s)", err.Error())
+	} else if len(tx.Signatures) == 0 {
 		e.Logger.Warnf("transaction has no signatures: %v", tx)
 	} else {
 		transactionID = tx.Signatures[0].String()
