@@ -485,7 +485,7 @@ func SendRequestEVM(
 		cfg.Sender = e.Chains[cfg.SourceChain].DeployerKey
 	}
 
-	e.Logger.Infof("Sending CCIP request from chain selector %d to chain selector %d from sender %s\n",
+	e.Logger.Infof("Sending CCIP request from chain selector %d to chain selector %d from sender %s",
 		cfg.SourceChain, cfg.DestChain, cfg.Sender.From.String())
 
 	tx, blockNum, err := CCIPSendRequest(e, state, cfg)
@@ -506,7 +506,7 @@ func SendRequestEVM(
 		return nil, fmt.Errorf("no CCIP message sent event found")
 	}
 
-	e.Logger.Infof("CCIP message (id %s) sent from chain selector %d to chain selector %d tx %s seqNum %d nonce %d sender %s testRouterEnabled %t\n",
+	e.Logger.Infof("CCIP message (id %s) sent from chain selector %d to chain selector %d tx %s seqNum %d nonce %d sender %s testRouterEnabled %t",
 		common.Bytes2Hex(it.Event.Message.Header.MessageId[:]),
 		cfg.SourceChain,
 		cfg.DestChain,
@@ -537,7 +537,7 @@ func SendRequestSol(
 		message.FeeToken = s.WSOL
 	}
 
-	e.Logger.Infof("Sending CCIP request from chain selector %d to chain selector %d from sender %s\n",
+	e.Logger.Infof("Sending CCIP request from chain selector %d to chain selector %d from sender %s",
 		cfg.SourceChain, cfg.DestChain, sender.String())
 
 	client := e.SolChains[cfg.SourceChain].Client
@@ -713,12 +713,12 @@ func SendRequestSol(
 	if tx, err := result.Transaction.GetTransaction(); err != nil {
 		e.Logger.Warnf("could not obtain transaction details (err = %w)", err)
 	} else if len(tx.Signatures) <= 0 {
-		e.Logger.Warnf("transaction has no signatures:\n%v", tx)
+		e.Logger.Warnf("transaction has no signatures: %v", tx)
 	} else {
 		transactionID = tx.Signatures[0].String()
 	}
 
-	e.Logger.Infof("CCIP message (id %s) sent from chain selector %d to chain selector %d tx %s seqNum %d nonce %d sender %s testRouterEnabled %t\n",
+	e.Logger.Infof("CCIP message (id %s) sent from chain selector %d to chain selector %d tx %s seqNum %d nonce %d sender %s testRouterEnabled %t",
 		common.Bytes2Hex(ccipMessageSentEvent.Message.Header.MessageId[:]),
 		cfg.SourceChain,
 		cfg.DestChain,
